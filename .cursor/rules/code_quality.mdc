@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Quality Standards
+
+- **Ruff:** All Python code formatting and linting must use Ruff.
+- Configure Ruff using the pyproject.toml file.
+- Run linter and formatter checks before committing code.
+- Use type annotations for all function and method signatures.
+- Fix linting issues before opening merge requests.

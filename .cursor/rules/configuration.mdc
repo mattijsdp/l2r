@@ -1,0 +1,29 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Configuration Standards
+
+- **Hydra Configuration:** All project configurations must use Hydra for configuration management. 
+- Configuration files should be structured in a hierarchical YAML format.
+- Place configuration files in a `config` directory at the project root.
+- Use config groups for variants (e.g., model types, datasets, environments).
+- Define defaults in the main config file.
+- Make parameters overridable via command line arguments.
+- Use structured configs where possible.
+
+Example structure:
+```
+conf/
+  config.yaml          # Main config with defaults
+  model/
+    cnn.yaml
+    transformer.yaml
+  dataset/
+    imagenet.yaml
+    custom.yaml
+  training/
+    default.yaml
+    distributed.yaml
+```

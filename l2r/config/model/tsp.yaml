@@ -1,0 +1,12 @@
+# TSP Model Configuration
+
+# Problem settings
+problem_type: tsp
+static_reduction_alpha: 0.1  # Percentage of edges to remove in static reduction
+max_search_space_size: 20  # Maximum number of candidates from reduction model (k)
+
+# Model architecture settings
+embedding_dim: 128
+num_attention_layers: 6
+feed_forward_dim: 512
+clipping: 10.0  # Clipping parameter for compatibility calculation 

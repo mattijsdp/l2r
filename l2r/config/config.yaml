@@ -1,0 +1,11 @@
+# Main configuration file for L2R
+defaults:
+  - model: tsp  # Default model configuration
+  - training: default  # Default training configuration
+  - _self_
+
+# General settings
+problem_type: tsp  # 'tsp' or 'cvrp'
+seed: 42
+verbose: true
+debug: false 

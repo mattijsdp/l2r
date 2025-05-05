@@ -1,0 +1,41 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Experiment Tracking and Logging Standards
+
+- **MLflow:** All experiment tracking and model logging must use MLflow.
+- Track experiments with appropriate names and tags to facilitate organization.
+- Log all hyperparameters at the start of each run.
+- Log metrics during training (loss, accuracy, etc.) at regular intervals.
+- Log model artifacts (weights, optimizers, etc.) at checkpoints.
+- Log visualizations (plots, confusion matrices, etc.).
+- Add model descriptions and requirements for reproducibility.
+- Create a consistent directory structure for experiment outputs.
+- Use MLflow's autologging features where appropriate.
+
+Example logging:
+```python
+import mlflow
+
+# Start a run
+with mlflow.start_run(run_name="experiment_name"):
+    # Log parameters
+    mlflow.log_params(config)
+    
+    # During training
+    for epoch in range(epochs):
+        # Training code
+        # ...
+        
+        # Log metrics
+        mlflow.log_metrics({
+            "train_loss": train_loss,
+            "val_loss": val_loss,
+            "accuracy": accuracy
+        }, step=epoch)
+    
+    # Log model
+    mlflow.pytorch.log_model(model, "model")
+```

@@ -1,0 +1,22 @@
+# Default Training Configuration
+
+# Optimizer settings
+learning_rate: 1e-4
+lr_decay: 0.98
+weight_decay: 0.0
+optimizer: adam
+grad_clip_val: 1.0
+
+# Training schedule
+epochs: 100
+batches_per_epoch: 2500
+batch_size: 180  # For TSP (will be 64 for CVRP)
+training_scale: 100  # Node count in training instances
+
+# REINFORCE settings
+baseline_exp_beta: 0.8
+
+# Logging
+log_interval: 100
+save_interval: 1
+validate_interval: 1 

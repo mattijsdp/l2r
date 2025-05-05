@@ -1,0 +1,23 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Structure Standards
+
+- **Modular Organization:** Organize code in a modular, maintainable structure.
+- Follow these directory conventions:
+  - `l2r/` - Main source code
+  - `config/` - Hydra configuration files
+  - `scripts/` - Utility and execution scripts
+  - `tests/` - Test files
+  - `notebooks/` - Jupyter notebooks for exploration and visualization
+  - `data/` - Data storage (or links to data)
+  - `docs/` - Documentation
+
+- Use meaningful file and directory names.
+- Create a clear separation between model, data processing, and training code.
+- Include a detailed README.md with setup and usage instructions.
+- Document the paper being implemented with citation and key concepts.
+- Follow a consistent naming convention for all files.
+- Keep the repository clean of temporary files, checkpoints, etc. (use .gitignore).

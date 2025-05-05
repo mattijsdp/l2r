@@ -1,0 +1,70 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Neural Network Standards
+
+- **PyTorch Framework:** All neural network implementations must use PyTorch.
+- **PyTorch Lightning:** Use PyTorch Lightning for training loop organization and distributed training.
+- Base models should be implemented as subclasses of `torch.nn.Module`.
+- Training modules should be implemented as subclasses of `pytorch_lightning.LightningModule`.
+- Use Lightning's Trainer class for training execution.
+- Use native PyTorch optimizers and loss functions where possible.
+- Implement models in a modular fashion with components as separate classes.
+- Store model definitions in a `models` directory.
+- Ensure models work with both CPU and GPU by using Lightning's device detection.
+- Use PyTorch's native data loading utilities (Dataset and DataLoader) with Lightning's DataModule.
+- Implement proper initialization for weights.
+- Use Lightning's callbacks for checkpointing, early stopping, and logging.
+
+Example model structure:
+```python
+import torch.nn as nn
+import pytorch_lightning as pl
+
+# Base PyTorch Module
+class MyModelBase(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        # Initialize layers based on config
+        
+    def forward(self, x):
+        # Model forward pass
+        return output
+
+# Lightning Module for training
+class MyModel(pl.LightningModule):
+    def __init__(self, config):
+        super().__init__()
+        self.save_hyperparameters(config)
+        self.model = MyModelBase(config)
+        self.loss_fn = nn.CrossEntropyLoss()
+        
+    def forward(self, x):
+        return self.model(x)
+        
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log('train_loss', loss)
+        return loss
+        
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        
+# Lightning DataModule
+class MyDataModule(pl.LightningDataModule):
+    def __init__(self, config):
+        super().__init__()
+        self.data_dir = config.data_dir
+        self.batch_size = config.batch_size
+        
+    def setup(self, stage=None):
+        # Prepare datasets
+        pass
+        
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.batch_size)
+```

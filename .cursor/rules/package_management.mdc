@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Package Management Standards
+
+- **uv with pyproject.toml:** All Python package management must use uv with a pyproject.toml file.
+- Do not directly edit pyproject.toml but use uv add/remove.
