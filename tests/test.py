@@ -3,8 +3,10 @@
 
 import os
 import sys
+import pytest
 import torch
 import numpy as np
+from typing import Dict, Any, Tuple, cast
 from omegaconf import OmegaConf
 
 # Add the parent directory to sys.path to enable imports
@@ -16,14 +18,98 @@ from l2r.models.construction_model import ConstructionModel
 from l2r.models.l2r_module import L2RModule
 
 
-def test_static_reduction():
-    """Test the static reduction function."""
-    print("\n--- Testing Static Reduction ---")
+@pytest.fixture
+def test_data() -> Tuple[torch.Tensor, int, int]:
+    """Create test data for testing."""
+    # Set random seed for reproducibility
+    torch.manual_seed(42)
+    np.random.seed(42)
     
     # Create a batch of test data (4 instances, 10 nodes each)
     batch_size = 4
     num_nodes = 10
     nodes = torch.rand(batch_size, num_nodes, 2)
+    
+    return nodes, batch_size, num_nodes
+
+
+@pytest.fixture
+def adjacency_data(test_data: Tuple[torch.Tensor, int, int]) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Generate adjacency matrix from test data."""
+    nodes, _, _ = test_data
+    adjacency = static_reduction(nodes, alpha=0.2)
+    return nodes, adjacency
+
+
+@pytest.fixture
+def candidate_data(adjacency_data: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Generate candidate indices for testing construction model."""
+    nodes, adjacency = adjacency_data
+    batch_size, num_nodes, _ = nodes.shape
+    
+    # Initialize reduction model
+    reduction_model = ReductionModel(embedding_dim=64, problem_type='tsp')
+    
+    # Create test inputs
+    first_node_idx = torch.zeros(batch_size, dtype=torch.long)
+    last_node_idx = torch.ones(batch_size, dtype=torch.long)
+    visited_mask = torch.zeros(batch_size, num_nodes, dtype=torch.bool)
+    
+    # Mark the first and last nodes as visited
+    for i in range(batch_size):
+        visited_mask[i, first_node_idx[i]] = True
+        visited_mask[i, last_node_idx[i]] = True
+    
+    # Forward pass
+    candidate_indices, _ = reduction_model(
+        nodes, adjacency, first_node_idx, last_node_idx, visited_mask, k=3
+    )
+    
+    return nodes, candidate_indices, first_node_idx, last_node_idx
+
+
+@pytest.fixture
+def tsp_config() -> Dict[str, Any]:
+    """Create a basic config for TSP."""
+    # Create a basic config
+    config = {
+        'problem_type': 'tsp',
+        'static_reduction_alpha': 0.2,
+        'max_search_space_size': 5,
+        'embedding_dim': 64,
+        'num_attention_layers': 2,
+        'clipping': 10.0,
+        'learning_rate': 1e-4,
+        'lr_decay': 0.98,
+    }
+    return config
+
+
+@pytest.fixture
+def cvrp_data() -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Create CVRP test data."""
+    # Set random seed for reproducibility
+    torch.manual_seed(42)
+    np.random.seed(42)
+    
+    # Create a batch of test data (4 instances, 20 nodes each including depot)
+    batch_size = 4
+    num_nodes = 20  # Including depot
+    nodes = torch.rand(batch_size, num_nodes, 2)
+    demands = torch.zeros(batch_size, num_nodes)
+    
+    # Set demands for non-depot nodes (1-10 units)
+    demands[:, 1:] = torch.rand(batch_size, num_nodes - 1) * 9 + 1
+    
+    # Set vehicle capacities (sum of demands / 4)
+    capacities = torch.sum(demands, dim=1) / 4
+    
+    return nodes, demands, capacities
+
+
+def test_static_reduction(test_data: Tuple[torch.Tensor, int, int]) -> None:
+    """Test the static reduction function."""
+    nodes, batch_size, num_nodes = test_data
     
     # Apply static reduction
     adjacency = static_reduction(nodes, alpha=0.2)
@@ -45,15 +131,11 @@ def test_static_reduction():
     actual_ones = int(adjacency.sum().item())
     tolerance = int(num_nodes * 0.5)  # Allow some tolerance
     assert abs(expected_ones - actual_ones) <= tolerance, f"Expected ~{expected_ones} edges, got {actual_ones}"
-    
-    print("✓ Static reduction test passed")
-    return nodes, adjacency
 
 
-def test_reduction_model(nodes, adjacency):
+def test_reduction_model(adjacency_data: Tuple[torch.Tensor, torch.Tensor]) -> None:
     """Test the learning-based reduction model."""
-    print("\n--- Testing Learning-based Reduction Model ---")
-    
+    nodes, adjacency = adjacency_data
     batch_size, num_nodes, _ = nodes.shape
     
     # Initialize reduction model
@@ -88,23 +170,15 @@ def test_reduction_model(nodes, adjacency):
             idx = candidate_indices[i, j].item()
             if idx != -1:  # Skip padding indices
                 assert not visited_mask[i, idx], f"Visited node {idx} should not be in candidates"
-    
-    print("✓ Reduction model test passed")
-    return candidate_indices
 
 
-def test_construction_model(nodes, candidate_indices):
+def test_construction_model(candidate_data: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]) -> None:
     """Test the local construction model."""
-    print("\n--- Testing Local Construction Model ---")
-    
-    batch_size, num_nodes, _ = nodes.shape
+    nodes, candidate_indices, first_node_idx, last_node_idx = candidate_data
+    batch_size = nodes.shape[0]
     
     # Initialize construction model
     construction_model = ConstructionModel(embedding_dim=64, num_layers=2, problem_type='tsp')
-    
-    # Create test inputs
-    first_node_idx = torch.zeros(batch_size, dtype=torch.long)
-    last_node_idx = torch.ones(batch_size, dtype=torch.long)
     
     # Forward pass
     log_probs = construction_model(nodes, first_node_idx, last_node_idx, candidate_indices)
@@ -117,37 +191,27 @@ def test_construction_model(nodes, candidate_indices):
     for i in range(batch_size):
         probs = torch.exp(log_probs[i])
         assert abs(probs.sum().item() - 1.0) < 1e-5, f"Probabilities should sum to 1, got {probs.sum().item()}"
-    
-    print("✓ Construction model test passed")
-    return log_probs
 
 
-def test_l2r_module():
+def test_l2r_module(tsp_config: Dict[str, Any]) -> None:
     """Test the complete L2R module."""
-    print("\n--- Testing Complete L2R Module ---")
+    # Set random seed for reproducibility
+    torch.manual_seed(42)
+    np.random.seed(42)
     
     # Create a batch of test data (4 instances, 20 nodes each)
     batch_size = 4
     num_nodes = 20
     nodes = torch.rand(batch_size, num_nodes, 2)
     
-    # Create a basic config
-    config = {
-        'problem_type': 'tsp',
-        'static_reduction_alpha': 0.2,
-        'max_search_space_size': 5,
-        'embedding_dim': 64,
-        'num_attention_layers': 2,
-        'clipping': 10.0,
-        'learning_rate': 1e-4,
-        'lr_decay': 0.98,
-    }
-    
-    # Convert to OmegaConf
-    cfg = OmegaConf.create(config)
+    # Convert to OmegaConf and then back to dict to fix type compatibility
+    cfg = OmegaConf.create(tsp_config)
+    config_dict = OmegaConf.to_container(cfg, resolve=True)
+    # Ensure we have a Dict[str, Any]
+    typed_config = cast(Dict[str, Any], config_dict)
     
     # Initialize L2R module
-    l2r_module = L2RModule(cfg)
+    l2r_module = L2RModule(typed_config)
     
     # Forward pass (greedy decoding)
     tours = l2r_module(nodes, greedy=True)
@@ -173,44 +237,25 @@ def test_l2r_module():
     
     # Check that sampled tours are different from greedy tours
     assert not torch.all(tours == sampled_tours), "Sampled tours should be different from greedy tours"
-    
-    print("✓ L2R module test passed")
-    return tours, tour_lengths
 
 
-def test_cvrp():
+def test_cvrp(tsp_config: Dict[str, Any], cvrp_data: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]) -> None:
     """Test L2R on CVRP instances."""
-    print("\n--- Testing L2R on CVRP ---")
+    nodes, demands, capacities = cvrp_data
+    batch_size, num_nodes = nodes.shape[:2]
     
-    # Create a batch of test data (4 instances, 20 nodes each including depot)
-    batch_size = 4
-    num_nodes = 20  # Including depot
-    nodes = torch.rand(batch_size, num_nodes, 2)
-    demands = torch.zeros(batch_size, num_nodes)
+    # Update config for CVRP
+    config = tsp_config.copy()
+    config['problem_type'] = 'cvrp'
     
-    # Set demands for non-depot nodes (1-10 units)
-    demands[:, 1:] = torch.rand(batch_size, num_nodes - 1) * 9 + 1
-    
-    # Set vehicle capacities (sum of demands / 4)
-    capacities = torch.sum(demands, dim=1) / 4
-    
-    # Create a basic config
-    config = {
-        'problem_type': 'cvrp',
-        'static_reduction_alpha': 0.2,
-        'max_search_space_size': 5,
-        'embedding_dim': 64,
-        'num_attention_layers': 2,
-        'clipping': 10.0,
-        'learning_rate': 1e-4,
-        'lr_decay': 0.98,
-    }
-    
-    # Convert to OmegaConf
+    # Convert to OmegaConf and then back to dict to fix type compatibility
     cfg = OmegaConf.create(config)
+    config_dict = OmegaConf.to_container(cfg, resolve=True)
+    # Ensure we have a Dict[str, Any]
+    typed_config = cast(Dict[str, Any], config_dict)
     
     # Initialize L2R module
-    l2r_module = L2RModule(cfg)
+    l2r_module = L2RModule(typed_config)
     
     # Forward pass (greedy decoding)
     tours = l2r_module(nodes, demands, capacities, greedy=True)
@@ -229,40 +274,9 @@ def test_cvrp():
     
     # Check tour lengths shape
     assert tour_lengths.shape == (batch_size,), f"Expected shape {(batch_size,)}, got {tour_lengths.shape}"
-    
-    print("✓ CVRP test passed")
-    return tours, tour_lengths
-
-
-def main():
-    """Run all tests."""
-    print("Starting L2R model tests...")
-    
-    # Set random seed for reproducibility
-    torch.manual_seed(42)
-    np.random.seed(42)
-    
-    try:
-        # Test static reduction
-        nodes, adjacency = test_static_reduction()
-        
-        # Test reduction model
-        candidate_indices = test_reduction_model(nodes, adjacency)
-        
-        # Test construction model
-        test_construction_model(nodes, candidate_indices)
-        
-        # Test complete L2R module on TSP
-        test_l2r_module()
-        
-        # Test L2R on CVRP
-        test_cvrp()
-        
-        print("\n✅ All tests passed!")
-    except AssertionError as e:
-        print(f"\n❌ Test failed: {e}")
-        sys.exit(1)
 
 
 if __name__ == "__main__":
-    main() 
+    """Run all tests using pytest."""
+    print("Starting L2R model tests...")
+    sys.exit(pytest.main([__file__, "-v"])) 

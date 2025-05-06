@@ -1682,7 +1682,6 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "antlr4-python3-runtime" },
     { name = "importlib-resources", version = "6.4.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "importlib-resources", version = "6.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_version < '0'" },
     { name = "omegaconf" },
     { name = "packaging" },
 ]
@@ -2067,6 +2066,7 @@ dependencies = [
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "numpy", version = "2.2.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "omegaconf" },
+    { name = "pytest" },
     { name = "pytorch-lightning", version = "2.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "pytorch-lightning", version = "2.5.1.post0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
@@ -2087,6 +2087,7 @@ requires-dist = [
     { name = "mlflow", specifier = ">=2.7.0" },
     { name = "numpy", specifier = ">=1.23.0" },
     { name = "omegaconf", specifier = ">=2.3.0" },
+    { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "pytorch-lightning", specifier = ">=2.0.0" },
